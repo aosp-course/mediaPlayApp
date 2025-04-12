@@ -3,70 +3,114 @@ package com.example.mediaplayerapp.ui.ui.main
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.provider.MediaStore.Audio.Media
-import android.util.Log
-import androidx.lifecycle.ViewModel
-import com.example.mediaplayerapp.MediaPlayerService
+import android.content.IntentFilter
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.View.OnClickListener
+import android.view.ViewGroup
+import android.widget.ImageView
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.example.mediaplayerapp.R
 
+class MainFragment : Fragment() {
 
-class MainViewModel : ViewModel() {
-    val TAG = "MediaPlayerViewModel"
-    var isPaused = true
-    var isFavorited = false
-
-    fun loadMusicFiles() {
-
+    companion object {
+        fun newInstance() = MainFragment()
     }
 
-    private fun playMusic(context: Context, path: String) {
-        var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PLAY"
-            putExtra("path", path)
+    private lateinit var viewModel: MainViewModel
+    lateinit var playPauseButton: ImageView
+
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val status = intent?.getStringExtra("status")
+            status?.let {
+                updateUIOnMediaPlayerStatusChanged(it)
+            }
         }
-        context.startService(serviceIntent)
-        isPaused = false
     }
 
-    fun playMusic(context: Context) {
-        Log.i(TAG, "playMusic")
-        //adicionar logica pra criar lista de musicas e tocar atual
-        playMusic(context, "/seu/caminho/para/musica")
-    }
-
-    fun pauseMusic(context: Context) {
-        Log.i(TAG, "pauseMusic")
-        var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PAUSE"
-        }
-        context.startService(serviceIntent)
-        isPaused = true
-    }
-
-    fun stopMusic(context: Context) {
-        Log.i(TAG, "stopMusic")
-        val serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_STOP"
-        }
-        context.startService(serviceIntent)
-    }
-
-    fun skipMusic(context: Context, isNext: Boolean) {
-        Log.i(TAG, "skipMusic - isNext: "+isNext)
-        var path: String
-        if(isNext) {
-            //adicionar logica pra criar lista de musicas e tocar a proxima da lista
-            path = "/seu/caminho/para/proxima/musica"
+    private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
+        var drawableId: Int
+        if(mediaPlayerStatus == "com.example.ACTION_PLAY") {
+            drawableId = R.drawable.pause_circle
         } else {
-            //adicionar logica pra criar lista de musicas e tocar a anterior da lista
-            path = "/seu/caminho/para/anterior/musica"
+            drawableId = R.drawable.play_circle
         }
-        playMusic(context, path)
+        playPauseButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                requireContext(),
+                drawableId
+            )
+        )
     }
 
-    fun setFavoriteMusic() {
-        //seta musica atual como favorita
-        isFavorited = !isFavorited
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        viewModel = ViewModelProvider(
+            this,
+            ViewModelProvider.NewInstanceFactory()
+        )[MainViewModel::class.java]
+        viewModel.loadMusicFiles()
     }
 
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        return inflater.inflate(R.layout.fragment_main, container, false)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        playPauseButton = view.findViewById(R.id.playPause_button)
+        val stopButton: ImageView = view.findViewById(R.id.stop_button)
+        val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
+        val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
+
+        playPauseButton.setOnClickListener {
+            if (viewModel.isPaused) {
+                viewModel.playMusic(requireContext())
+            } else {
+                viewModel.pauseMusic(requireContext())
+            }
+        }
+
+        stopButton.setOnClickListener {
+            viewModel.stopMusic(requireContext())
+        }
+
+        skipNextButton.setOnClickListener {
+            viewModel.skipMusic(requireContext(), true)
+        }
+
+        skipBackButton.setOnClickListener {
+            viewModel.skipMusic(requireContext(), false)
+        }
+
+        val starButton: ImageView = view.findViewById(R.id.star_button)
+
+        starButton.setOnClickListener {
+            if (viewModel.isFavorited) {
+                starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.white))
+            } else {
+                starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gold))
+            }
+            viewModel.setFavoriteMusic()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val filter = IntentFilter("com.example.MEDIA_PLAYER_STATUS")
+        requireContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        requireContext().unregisterReceiver(receiver)
+    }
 }
