@@ -40,23 +40,37 @@ class MainFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val playPauseButton: ImageView = view.findViewById(R.id.playPause_button)
+        val stopButton: ImageView = view.findViewById(R.id.stop_button)
+        val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
+        val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
 
         playPauseButton.setOnClickListener {
-            // Your code
             var drawableId: Int
-
-            if (isPaused) {
-                drawableId = R.drawable.pause_circle
-            } else {
+            if (viewModel.isPaused) {
+                viewModel.playMusic(requireContext())
                 drawableId = R.drawable.play_circle
+            } else {
+                viewModel.pauseMusic(requireContext())
+                drawableId = R.drawable.pause_circle
             }
-            isPaused = !isPaused
             playPauseButton.setImageDrawable(
                 ContextCompat.getDrawable(
                     requireContext(),
                     drawableId
                 )
             )
+        }
+
+        stopButton.setOnClickListener {
+            viewModel.stopMusic(requireContext())
+        }
+
+        skipNextButton.setOnClickListener {
+            viewModel.skipMusic(requireContext(), true)
+        }
+
+        skipBackButton.setOnClickListener {
+            viewModel.skipMusic(requireContext(), false)
         }
 
         val starButton: ImageView = view.findViewById(R.id.star_button)
