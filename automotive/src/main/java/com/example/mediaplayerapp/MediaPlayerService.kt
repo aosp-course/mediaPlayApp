@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
@@ -29,11 +30,11 @@ class MediaPlayerService : Service() {
             }
         }
 
-    private fun playAudio(path: String) {
+    private fun playAudio(resourceId: Int) {
         try {
             mediaPlayer!!.reset()
 
-            mediaPlayer!!.setDataSource(path)
+            mediaPlayer!!.setDataSource(this, Uri.parse("android.resource://" + packageName + "/" + resourceId))
 
             mediaPlayer!!.prepare()
 
@@ -74,10 +75,10 @@ class MediaPlayerService : Service() {
             val action = intent.action
             if (action != null) when (action) {
                 "com.example.ACTION_PLAY" -> {
-                    val path = intent.getStringExtra("path")
+                    val resourceId = intent.getIntExtra("resourceId", 0)
                     requestAudioFocus {
-                        if (path != null) {
-                            playAudio(path)
+                        if (resourceId != 0) {
+                            playAudio(resourceId)
                         }
                     }
                 }
