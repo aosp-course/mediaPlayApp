@@ -1,5 +1,9 @@
 package com.example.mediaplayerapp.ui.ui.main
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,8 +22,31 @@ class MainFragment : Fragment() {
     }
 
     private lateinit var viewModel: MainViewModel
-    private var isPaused = true
-    private var isFavorited = false
+    lateinit var playPauseButton: ImageView
+
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val status = intent?.getStringExtra("status")
+            status?.let {
+                updateUIOnMediaPlayerStatusChanged(it)
+            }
+        }
+    }
+
+    private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
+        var drawableId: Int
+        if(mediaPlayerStatus == "com.example.ACTION_PLAY") {
+            drawableId = R.drawable.play_circle
+        } else {
+            drawableId = R.drawable.pause_circle
+        }
+        playPauseButton.setImageDrawable(
+            ContextCompat.getDrawable(
+                requireContext(),
+                drawableId
+            )
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,26 +66,17 @@ class MainFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val playPauseButton: ImageView = view.findViewById(R.id.playPause_button)
+        playPauseButton = view.findViewById(R.id.playPause_button)
         val stopButton: ImageView = view.findViewById(R.id.stop_button)
         val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
         val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
 
         playPauseButton.setOnClickListener {
-            var drawableId: Int
             if (viewModel.isPaused) {
                 viewModel.playMusic(requireContext())
-                drawableId = R.drawable.play_circle
             } else {
                 viewModel.pauseMusic(requireContext())
-                drawableId = R.drawable.pause_circle
             }
-            playPauseButton.setImageDrawable(
-                ContextCompat.getDrawable(
-                    requireContext(),
-                    drawableId
-                )
-            )
         }
 
         stopButton.setOnClickListener {
@@ -76,13 +94,23 @@ class MainFragment : Fragment() {
         val starButton: ImageView = view.findViewById(R.id.star_button)
 
         starButton.setOnClickListener {
-            if (isFavorited) {
+            if (viewModel.isFavorited) {
                 starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.white))
             } else {
                 starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gold))
             }
-            isFavorited = !isFavorited
+            viewModel.setFavoriteMusic()
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        val filter = IntentFilter("com.example.MEDIA_PLAYER_STATUS")
+        requireContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        requireContext().unregisterReceiver(receiver)
+    }
 }
