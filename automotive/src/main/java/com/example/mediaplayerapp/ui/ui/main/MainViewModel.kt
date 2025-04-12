@@ -1,5 +1,6 @@
 package com.example.mediaplayerapp.ui.ui.main
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore.Audio.Media
@@ -61,6 +62,11 @@ class MainViewModel : ViewModel() {
             path = "/seu/caminho/para/anterior/musica"
         }
         playMusic(context, path)
+    }
+
+    fun setFavoriteMusic() {
+        //seta musica atual como favorita
+        isFavorited = !isFavorited
     }
 
 }
