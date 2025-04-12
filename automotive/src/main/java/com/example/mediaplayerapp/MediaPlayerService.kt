@@ -42,9 +42,11 @@ class MediaPlayerService : Service() {
             e.printStackTrace()
         }
     }
+
     private fun pauseAudio() {
         if(mediaPlayer!!.isPlaying()) mediaPlayer!!.pause();
     }
+
     private fun stopAudio() {
         mediaPlayer!!.stop();
 
@@ -61,12 +63,16 @@ class MediaPlayerService : Service() {
         if (intent != null) {
             val action = intent.action
             if (action != null) when (action) {
-                "PLAY" -> {
-                    val path = intent.extras.toString()
-                    requestAudioFocus { playAudio(path) }
+                "com.example.ACTION_PLAY" -> {
+                    val path = intent.getStringExtra("path")
+                    requestAudioFocus {
+                        if (path != null) {
+                            playAudio(path)
+                        }
+                    }
                 }
-                "PAUSE" -> pauseAudio()
-                "STOP" -> stopAudio()
+                "com.example.ACTION_PAUSE" -> pauseAudio()
+                "com.example.ACTION_STOP" -> stopAudio()
                 else -> {
                     Log.e(TAG, "Ação não encontrado!")
                 }
