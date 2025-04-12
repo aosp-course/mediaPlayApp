@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="backgroundPrimary">#000000</color>
+    <color name="backgroundSecondary">#163E64</color>
+    <color name="progressColor">#2777BF</color>
+    <color name="white">#ffffff</color>
+    <color name="gold">#FFD700</color>
+</resources>
