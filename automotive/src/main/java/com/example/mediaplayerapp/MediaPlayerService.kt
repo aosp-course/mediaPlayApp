@@ -38,21 +38,31 @@ class MediaPlayerService : Service() {
             mediaPlayer!!.prepare()
 
             mediaPlayer!!.start()
+            sendBroadcastResponseToApp("com.example.ACTION_PLAY")
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     private fun pauseAudio() {
-        if(mediaPlayer!!.isPlaying()) mediaPlayer!!.pause();
+        if(mediaPlayer!!.isPlaying()) {
+            mediaPlayer!!.pause()
+            sendBroadcastResponseToApp("com.example.ACTION_PAUSE")
+        }
     }
 
     private fun stopAudio() {
         mediaPlayer!!.stop();
 
         stopForeground(true);
-
+        sendBroadcastResponseToApp("com.example.ACTION_STOP")
         stopSelf();
+    }
+
+    private fun sendBroadcastResponseToApp(message: String) {
+        val intent = Intent("com.example.MEDIA_PLAYER_STATUS")
+        intent.putExtra("status", message)
+        sendBroadcast(intent)
     }
 
     override fun onBind(p0: Intent?): IBinder? {
