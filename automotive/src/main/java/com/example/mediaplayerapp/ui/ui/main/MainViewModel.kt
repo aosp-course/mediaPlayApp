@@ -3,114 +3,81 @@ package com.example.mediaplayerapp.ui.ui.main
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.View.OnClickListener
-import android.view.ViewGroup
-import android.widget.ImageView
-import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import android.provider.MediaStore.Audio.Media
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import com.example.mediaplayerapp.MediaPlayerService
 import com.example.mediaplayerapp.R
 
-class MainFragment : Fragment() {
 
-    companion object {
-        fun newInstance() = MainFragment()
+class MainViewModel : ViewModel() {
+    val TAG = "MediaPlayerViewModel"
+    var isPaused = true
+    var isFavorited = false
+
+    // Lista de IDs dos recursos de áudio
+    private val musicList = listOf(
+        R.raw.circusoffreaks,
+        R.raw.gothamlicious,
+        R.raw.igotastickarrbryanteoh,
+        R.raw.newherointown,
+        R.raw.theicegiants
+    )
+
+    private var currentMusicIndex = 0
+
+    fun loadMusicFiles() {
+        // aqui não precisa fazer nada pq os arquivos são carregados na lista acima ai
     }
 
-    private lateinit var viewModel: MainViewModel
-    lateinit var playPauseButton: ImageView
-
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val status = intent?.getStringExtra("status")
-            status?.let {
-                updateUIOnMediaPlayerStatusChanged(it)
-            }
+    private fun playMusic(context: Context, resourceId: Int) {
+        var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
+            action = "com.example.ACTION_PLAY"
+            putExtra("resourceId", resourceId)
         }
+        context.startService(serviceIntent)
+        isPaused = false
     }
 
-    private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
-        var drawableId: Int
-        if(mediaPlayerStatus == "com.example.ACTION_PLAY") {
-            drawableId = R.drawable.pause_circle
+    fun playMusic(context: Context) {
+        Log.i(TAG, "playMusic")
+        //adicionar logica pra criar lista de musicas e tocar atual
+        playMusic(context, musicList[currentMusicIndex])
+    }
+
+    fun pauseMusic(context: Context) {
+        Log.i(TAG, "pauseMusic")
+        var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
+            action = "com.example.ACTION_PAUSE"
+        }
+        context.startService(serviceIntent)
+        isPaused = true
+    }
+
+    fun stopMusic(context: Context) {
+        Log.i(TAG, "stopMusic")
+        val serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
+            action = "com.example.ACTION_STOP"
+        }
+        context.startService(serviceIntent)
+    }
+
+    fun skipMusic(context: Context, isNext: Boolean) {
+        Log.i(TAG, "skipMusic - isNext: "+isNext)
+        var path: String
+        if(isNext) {
+            //adicionar logica pra criar lista de musicas e tocar a proxima da lista
+            currentMusicIndex = (currentMusicIndex + 1) % musicList.size
         } else {
-            drawableId = R.drawable.play_circle
+            //adicionar logica pra criar lista de musicas e tocar a anterior da lista
+            currentMusicIndex = (currentMusicIndex - 1 + musicList.size) % musicList.size
         }
-        playPauseButton.setImageDrawable(
-            ContextCompat.getDrawable(
-                requireContext(),
-                drawableId
-            )
-        )
+        playMusic(context, musicList[currentMusicIndex])
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(
-            this,
-            ViewModelProvider.NewInstanceFactory()
-        )[MainViewModel::class.java]
-        viewModel.loadMusicFiles()
+    fun setFavoriteMusic() {
+        //seta musica atual como favorita
+        isFavorited = !isFavorited
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.fragment_main, container, false)
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        playPauseButton = view.findViewById(R.id.playPause_button)
-        val stopButton: ImageView = view.findViewById(R.id.stop_button)
-        val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
-        val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
-
-        playPauseButton.setOnClickListener {
-            if (viewModel.isPaused) {
-                viewModel.playMusic(requireContext())
-            } else {
-                viewModel.pauseMusic(requireContext())
-            }
-        }
-
-        stopButton.setOnClickListener {
-            viewModel.stopMusic(requireContext())
-        }
-
-        skipNextButton.setOnClickListener {
-            viewModel.skipMusic(requireContext(), true)
-        }
-
-        skipBackButton.setOnClickListener {
-            viewModel.skipMusic(requireContext(), false)
-        }
-
-        val starButton: ImageView = view.findViewById(R.id.star_button)
-
-        starButton.setOnClickListener {
-            if (viewModel.isFavorited) {
-                starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.white))
-            } else {
-                starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gold))
-            }
-            viewModel.setFavoriteMusic()
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        val filter = IntentFilter("com.example.MEDIA_PLAYER_STATUS")
-        requireContext().registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        requireContext().unregisterReceiver(receiver)
-    }
 }
