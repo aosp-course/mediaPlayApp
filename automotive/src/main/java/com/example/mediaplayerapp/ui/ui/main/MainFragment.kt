@@ -4,12 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.Image
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.OnClickListener
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -35,10 +37,10 @@ class MainFragment : Fragment() {
 
     private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
         var drawableId: Int
-        if(mediaPlayerStatus == "com.example.ACTION_PLAY") {
-            drawableId = R.drawable.play_circle
-        } else {
+        if (mediaPlayerStatus == "com.example.ACTION_PLAY") {
             drawableId = R.drawable.pause_circle
+        } else {
+            drawableId = R.drawable.play_circle
         }
         playPauseButton.setImageDrawable(
             ContextCompat.getDrawable(
@@ -54,7 +56,6 @@ class MainFragment : Fragment() {
             this,
             ViewModelProvider.NewInstanceFactory()
         )[MainViewModel::class.java]
-        viewModel.loadMusicFiles()
     }
 
     override fun onCreateView(
@@ -85,10 +86,12 @@ class MainFragment : Fragment() {
 
         skipNextButton.setOnClickListener {
             viewModel.skipMusic(requireContext(), true)
+            updateMusicMetadata(view)
         }
 
         skipBackButton.setOnClickListener {
             viewModel.skipMusic(requireContext(), false)
+            updateMusicMetadata(view)
         }
 
         val starButton: ImageView = view.findViewById(R.id.star_button)
@@ -101,6 +104,8 @@ class MainFragment : Fragment() {
             }
             viewModel.setFavoriteMusic()
         }
+
+        updateMusicMetadata(view)
     }
 
     override fun onStart() {
@@ -112,5 +117,16 @@ class MainFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         requireContext().unregisterReceiver(receiver)
+    }
+
+    private fun updateMusicMetadata(view: View) {
+        val musicTitle: TextView = view.findViewById(R.id.music_title)
+        musicTitle.setText(viewModel.getMusicName(requireContext()))
+
+        val albumImageView: ImageView = view.findViewById(R.id.album)
+        val albumData = viewModel.getAlbumCover(requireContext())
+        if (albumData != null) {
+            albumImageView.setImageBitmap(albumData)
+        }
     }
 }

@@ -3,6 +3,9 @@ package com.example.mediaplayerapp.ui.ui.main
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.provider.MediaStore.Audio.Media
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -26,8 +29,28 @@ class MainViewModel : ViewModel() {
 
     private var currentMusicIndex = 0
 
-    fun loadMusicFiles() {
-        // aqui não precisa fazer nada pq os arquivos são carregados na lista acima ai
+    fun getMusicName(context: Context): String {
+        val retriever = MediaMetadataRetriever()
+        val afd = context.resources.openRawResourceFd(musicList[currentMusicIndex])
+        retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        return "$artist - $title"
+    }
+
+    fun getAlbumCover(context: Context): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        val afd = context.resources.openRawResourceFd(musicList[currentMusicIndex])
+        retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+        val artBytes = retriever.embeddedPicture
+        retriever.release()
+        afd.close()
+
+        return if (artBytes != null) {
+            BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size)
+        } else {
+            null
+        }
     }
 
     private fun playMusic(context: Context, resourceId: Int) {
@@ -41,8 +64,8 @@ class MainViewModel : ViewModel() {
 
     fun playMusic(context: Context) {
         Log.i(TAG, "playMusic")
-        //adicionar logica pra criar lista de musicas e tocar atual
         playMusic(context, musicList[currentMusicIndex])
+        isPaused = false
     }
 
     fun pauseMusic(context: Context) {
@@ -60,16 +83,15 @@ class MainViewModel : ViewModel() {
             action = "com.example.ACTION_STOP"
         }
         context.startService(serviceIntent)
+        isPaused = true
     }
 
     fun skipMusic(context: Context, isNext: Boolean) {
-        Log.i(TAG, "skipMusic - isNext: "+isNext)
+        Log.i(TAG, "skipMusic - isNext: " + isNext)
         var path: String
-        if(isNext) {
-            //adicionar logica pra criar lista de musicas e tocar a proxima da lista
+        if (isNext) {
             currentMusicIndex = (currentMusicIndex + 1) % musicList.size
         } else {
-            //adicionar logica pra criar lista de musicas e tocar a anterior da lista
             currentMusicIndex = (currentMusicIndex - 1 + musicList.size) % musicList.size
         }
         playMusic(context, musicList[currentMusicIndex])
