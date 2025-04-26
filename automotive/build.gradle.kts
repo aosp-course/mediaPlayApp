@@ -1,6 +1,8 @@
 import com.android.build.gradle.internal.cxx.gradle.generator.externalNativeBuildIsActive
 
 plugins {
+    kotlin("plugin.serialization") version "2.0.21"
+
     id("com.android.application") version "8.2.0"
     id("org.jetbrains.kotlin.android") version "1.9.0"
 }
@@ -64,4 +66,13 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // Navigation
+    val nav_version = "2.8.9"
+    // Views/Fragments integration
+    implementation("androidx.navigation:navigation-fragment-ktx:$nav_version")
+    implementation("androidx.navigation:navigation-ui-ktx:$nav_version")
+    implementation("androidx.navigation:navigation-dynamic-features-fragment:$nav_version")
+    androidTestImplementation("androidx.navigation:navigation-testing:$nav_version")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }
