@@ -1,3 +1,5 @@
+import com.android.build.gradle.internal.cxx.gradle.generator.externalNativeBuildIsActive
+
 plugins {
     id("com.android.application") version "8.2.0"
     id("org.jetbrains.kotlin.android") version "1.9.0"
@@ -15,6 +17,20 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Transmite argumentos para o CMake, como definições de macros:
+        externalNativeBuild {
+            cmake {
+                cppFlags.add("-std=c++11")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            // Define o caminho para o script CMakeLists.txt
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     buildTypes {
@@ -34,6 +50,8 @@ android {
         jvmTarget = "11"
     }
 }
+
+
 
 dependencies {
     implementation("androidx.media:media:1.7.0")
