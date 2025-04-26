@@ -5,4 +5,5 @@
     <color name="progressColor">#2777BF</color>
     <color name="white">#ffffff</color>
     <color name="gold">#FFD700</color>
+    <color name="seekBarBackground">#808080</color>
 </resources>

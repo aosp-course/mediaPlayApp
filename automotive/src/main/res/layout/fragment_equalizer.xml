@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/backgroundPrimary">
+
+    <!-- Bar Section -->
+    <SeekBar
+        android:id="@+id/seekBar1"
+        android:layout_width="@dimen/seekBar_height"
+        android:layout_height="0dp"
+        android:rotation="270"
+        android:min="0"
+        android:max="10"
+        android:progressBackgroundTint="@color/seekBarBackground"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/seekBar2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHeight_percent="0.7" />
+
+    <TextView
+        android:id="@+id/textBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bass"
+        android:textColor="@android:color/white"
+        android:textSize="@dimen/bmt_names"
+        app:layout_constraintTop_toBottomOf="@id/seekBar1"
+        app:layout_constraintStart_toStartOf="@id/seekBar1"
+        app:layout_constraintEnd_toEndOf="@id/seekBar1"
+        />
+
+    <!-- Mid Section -->
+    <SeekBar
+        android:id="@+id/seekBar2"
+        android:layout_width="@dimen/seekBar_height"
+        android:layout_height="0dp"
+        android:rotation="270"
+        android:min="0"
+        android:max="10"
+        android:progressBackgroundTint="@color/seekBarBackground"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/seekBar3"
+        app:layout_constraintStart_toEndOf="@+id/seekBar1"
+        app:layout_constraintHeight_percent="0.7" />
+
+    <TextView
+        android:id="@+id/textMid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mid"
+        android:textSize="@dimen/bmt_names"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/seekBar2"
+        app:layout_constraintStart_toStartOf="@id/seekBar2"
+        app:layout_constraintEnd_toEndOf="@id/seekBar2"
+        />
+
+    <!-- Treble Section -->
+    <SeekBar
+        android:id="@+id/seekBar3"
+        android:layout_width="@dimen/seekBar_height"
+        android:layout_height="0dp"
+        android:rotation="270"
+        android:min="0"
+        android:max="10"
+        android:progressBackgroundTint="@color/seekBarBackground"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/seekBar2"
+        app:layout_constraintHeight_percent="0.7" />
+
+    <TextView
+        android:id="@+id/textTreble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Treble"
+        android:textSize="@dimen/bmt_names"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/seekBar3"
+        app:layout_constraintStart_toStartOf="@id/seekBar3"
+        app:layout_constraintEnd_toEndOf="@id/seekBar3"
+        />
+
+    <ImageView
+        android:id="@+id/backButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:src="@drawable/back_button"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="35dp"
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

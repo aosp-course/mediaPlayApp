@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.OnClickListener
+import androidx.navigation.fragment.findNavController
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
@@ -71,6 +72,7 @@ class MainFragment : Fragment() {
         val stopButton: ImageView = view.findViewById(R.id.stop_button)
         val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
         val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
+        val settingsButton: ImageView = view.findViewById(R.id.settings_button)
 
         playPauseButton.setOnClickListener {
             if (viewModel.isPaused) {
@@ -103,6 +105,10 @@ class MainFragment : Fragment() {
                 starButton.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gold))
             }
             viewModel.setFavoriteMusic()
+        }
+
+        settingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_mainFragment_to_equalizerFragment)
         }
 
         updateMusicMetadata(view)
