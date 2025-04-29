@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 
 
-open class MainViewModel(private val application: Application) : AndroidViewModel(application) {
+open class EqualizerViewModel(private val application: Application) : AndroidViewModel(application) {
 
     /**
      * Sets the bass level for the currently selected profile.

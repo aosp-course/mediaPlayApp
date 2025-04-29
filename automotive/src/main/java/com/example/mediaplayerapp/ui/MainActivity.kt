@@ -4,12 +4,11 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.mediaplayerapp.R
 import androidx.activity.viewModels
-import androidx.navigation.fragment.NavHostFragment
-import com.example.mediaplayerapp.ui.ui.main.MainViewModel
+import com.example.mediaplayerapp.viewmodel.MediaPlayerViewModel
 
 class MainActivity : AppCompatActivity() {
 
-    val mViewModel by viewModels<MainViewModel>()
+    val mViewModel by viewModels<MediaPlayerViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

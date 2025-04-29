@@ -4,11 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.Image
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.OnClickListener
 import androidx.navigation.fragment.findNavController
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -17,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.mediaplayerapp.R
+import com.example.mediaplayerapp.viewmodel.MediaPlayerViewModel
 
 class MainFragment : Fragment() {
 
@@ -24,7 +23,7 @@ class MainFragment : Fragment() {
         fun newInstance() = MainFragment()
     }
 
-    private lateinit var viewModel: MainViewModel
+    private lateinit var viewModel: MediaPlayerViewModel
     lateinit var playPauseButton: ImageView
 
     private val receiver = object : BroadcastReceiver() {
@@ -56,7 +55,7 @@ class MainFragment : Fragment() {
         viewModel = ViewModelProvider(
             this,
             ViewModelProvider.NewInstanceFactory()
-        )[MainViewModel::class.java]
+        )[MediaPlayerViewModel::class.java]
     }
 
     override fun onCreateView(

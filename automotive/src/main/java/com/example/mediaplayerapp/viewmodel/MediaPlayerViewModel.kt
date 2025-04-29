@@ -1,12 +1,10 @@
-package com.example.mediaplayerapp.ui.ui.main
+package com.example.mediaplayerapp.viewmodel
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import android.provider.MediaStore.Audio.Media
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.mediaplayerapp.MediaPlayerService
@@ -20,7 +18,7 @@ import com.example.mediaplayerapp.R
  * como tocar, pausar, parar, e pular faixas, além de manipular favoritos e
  * recuperar metadados da música.
  */
-class MainViewModel : ViewModel() {
+class MediaPlayerViewModel : ViewModel() {
 
     /// Tag utilizada para logs.
     val TAG = "MediaPlayerViewModel"

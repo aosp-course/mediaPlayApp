@@ -11,7 +11,7 @@ import android.widget.SeekBar
 import androidx.fragment.app.activityViewModels
 import com.example.mediaplayerapp.R
 import androidx.navigation.fragment.findNavController
-import com.example.mediaplayerapp.viewmodel.MainViewModel
+import com.example.mediaplayerapp.viewmodel.EqualizerViewModel
 
 
 /**
@@ -21,7 +21,7 @@ import com.example.mediaplayerapp.viewmodel.MainViewModel
  */
 class EqualizerFragment : Fragment() {
 
-    private val mViewModel by activityViewModels<MainViewModel>()
+    private val mViewModel by activityViewModels<EqualizerViewModel>()
     private val TAG = "EqualizerFragment"
 
     override fun onCreate(savedInstanceState: Bundle?) {
