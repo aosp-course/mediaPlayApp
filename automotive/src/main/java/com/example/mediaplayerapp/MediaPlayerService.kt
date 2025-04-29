@@ -2,13 +2,15 @@ package com.example.mediaplayerapp
 
 import android.app.Service
 import android.content.Intent
+import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
-import android.media.MediaPlayer
+import android.media.AudioTrack
 import android.net.Uri
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
+import java.io.InputStream
 
 /**
  * @class MediaPlayerService
@@ -22,9 +24,6 @@ class MediaPlayerService : Service() {
 
     /// Tag utilizada para logs.
     val TAG: String = "MediaPlayerService"
-
-    /// Instância do MediaPlayer para controlar a reprodução de áudio.
-    private var mediaPlayer: MediaPlayer? = null
 
     /// Gerenciador de áudio para solicitar foco de áudio.
     private var audioManager: AudioManager? = null
@@ -44,6 +43,14 @@ class MediaPlayerService : Service() {
     /// Gerenciador de notificações para enviar atualizações ao usuário.
     private lateinit var notificationManager: MediaPlayerNotificationManager
 
+    /// AudioEqualizer
+    private var audioEqualizer: AudioEqualizer = AudioEqualizer()
+
+    private var audioTrack: AudioTrack? = null
+    private var playThread: Thread? = null
+    private var isPlaying: Boolean = false
+    private var isPaused: Boolean = false
+
     /**
      * Listener para mudanças de foco de áudio.
      * Pausa a música caso o foco seja perdido.
@@ -58,21 +65,96 @@ class MediaPlayerService : Service() {
         }
 
     /**
-     * @brief Inicia a reprodução de áudio.
+     * @brief Aplica transformações ao buffer de áudio.
+     * Por enquanto, retorna o buffer sem modificações.
+     */
+    private fun applyAudioEffects(buffer: ByteArray): ByteArray {
+        var buf = buffer
+        buf = audioEqualizer.applyBassBoostEffect(buf, 0.4f)
+        buf = audioEqualizer.applyMidrangeBoostEffect(buf, 1.0f) // Não está funcionando
+        return buf
+    }
+
+    /**
+     * @brief Inicia a reprodução de áudio usando AudioTrack em modo streaming.
+     * Lê o arquivo wav do recurso, divide em buffers, aplica efeitos e envia para o AudioTrack.
      * @param resourceId ID do recurso de áudio a ser reproduzido.
      */
     private fun playAudio(resourceId: Int) {
-        Log.i(TAG, "Música tocando")
+        Log.i(TAG, "Música tocando via AudioTrack")
         try {
-            mediaPlayer!!.reset()
-            mediaPlayer!!.setDataSource(this, Uri.parse("android.resource://" + packageName + "/" + resourceId))
-            mediaPlayer!!.prepare()
-            mediaPlayer!!.start()
+            isPlaying = true
+            isPaused = false
+
+            val sampleRate = 44100
+            val channelConfig = AudioFormat.CHANNEL_OUT_STEREO
+            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+            val frameSize = AudioTrack.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            audioTrack = AudioTrack(
+                AudioManager.STREAM_MUSIC,
+                sampleRate,
+                channelConfig,
+                audioFormat,
+                frameSize,
+                AudioTrack.MODE_STREAM
+            )
+
+            playThread = Thread {
+                val inputStream: InputStream = resources.openRawResource(resourceId)
+                inputStream.skip(44) // Pular cabeçalho do WAV
+
+                var currentFrame: ByteArray? = null
+                var nextFrame: ByteArray? = null
+                val buffer = ByteArray(frameSize)
+                var bytesRead: Int
+
+                // Pré-carrega o primeiro frame
+                bytesRead = inputStream.read(buffer, 0, frameSize)
+                if (bytesRead > 0) {
+                    currentFrame = buffer.copyOf(bytesRead)
+                }
+
+                // Pré-carrega o próximo frame
+                if (inputStream.available() > 0) {
+                    bytesRead = inputStream.read(buffer, 0, frameSize)
+                    if (bytesRead > 0) {
+                        nextFrame = buffer.copyOf(bytesRead)
+                    }
+                }
+
+                audioTrack?.play()
+
+                while (isPlaying && currentFrame != null) {
+                    if (isPaused) {
+                        Thread.sleep(100)
+                        continue
+                    }
+                    // Processa e envia o frame atual
+                    val processedFrame = applyAudioEffects(currentFrame)
+
+                    Log.d(TAG, "Enviando frame de tamanho: ${processedFrame.size}")
+                    audioTrack?.write(processedFrame, 0, processedFrame.size)
+
+                    // TODO: Wait until current frame is over
+
+                    currentFrame = nextFrame
+                    nextFrame = null
+
+                    // Lê um novo frame para atualizar o próximo
+                    if (isPlaying && inputStream.available() > 0) {
+                        bytesRead = inputStream.read(buffer, 0, frameSize)
+                        if (bytesRead > 0) {
+                            nextFrame = buffer.copyOf(bytesRead)
+                        }
+                    }
+                }
+                inputStream.close()
+            }
+            playThread?.start()
             sendBroadcastResponseToApp("com.example.ACTION_PLAY")
             notificationManager.showNotification("Música tocando")
         } catch (e: Exception) {
-            Log.e(TAG, "Ocorreu um erro ao tentar dar play na música")
-            e.printStackTrace()
+            Log.e(TAG, "Erro ao iniciar reprodução via AudioTrack", e)
         }
     }
 
@@ -80,9 +162,10 @@ class MediaPlayerService : Service() {
      * @brief Pausa a reprodução de áudio.
      */
     private fun pauseAudio() {
-        if(mediaPlayer != null && mediaPlayer!!.isPlaying()) {
-            Log.i(TAG, "Música pausada")
-            mediaPlayer!!.pause()
+        if (isPlaying && !isPaused) {
+            Log.i(TAG, "Música pausada via AudioTrack")
+            isPaused = true
+            audioTrack?.pause()
             sendBroadcastResponseToApp("com.example.ACTION_PAUSE")
             notificationManager.showNotification("Música pausada")
         }
@@ -92,11 +175,16 @@ class MediaPlayerService : Service() {
      * @brief Para a reprodução de áudio e finaliza o serviço.
      */
     private fun stopAudio() {
-        Log.i(TAG, "Música parada")
+        Log.i(TAG, "Música parada via AudioTrack")
+        isPlaying = false
+        isPaused = false
+        playThread?.join(500) // Aguarda a thread terminar
+        audioTrack?.stop()
+        audioTrack?.release()
+        audioTrack = null
         notificationManager.showNotification("Música parada")
-        mediaPlayer!!.stop()
-        stopForeground(true)
         sendBroadcastResponseToApp("com.example.ACTION_STOP")
+        stopForeground(true)
         stopSelf()
         isServiceStopped = true
     }
@@ -168,8 +256,7 @@ class MediaPlayerService : Service() {
      * @brief Inicializa o serviço se necessário.
      */
     private fun initServiceIfRequired() {
-        if(isServiceStopped) {
-            mediaPlayer = MediaPlayer()
+        if (isServiceStopped) {
             audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
             mediaSession = MediaSessionCompat(this, "MediaPlayerService")
             notificationManager = MediaPlayerNotificationManager(this, CHANNEL_ID)
@@ -184,8 +271,8 @@ class MediaPlayerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayer!!.release()
-        mediaPlayer = null
+        audioTrack?.release()
+        audioTrack = null
         mediaSession!!.release()
     }
 }
