@@ -70,7 +70,7 @@ class MediaPlayerService : Service() {
      */
     private fun applyAudioEffects(buffer: ByteArray): ByteArray {
         var buf = buffer
-        buf = audioEqualizer.applyBassBoostEffect(buf, 0.4f)
+        buf = audioEqualizer.applyBassBoostEffect(buf, 1.0f)
         buf = audioEqualizer.applyMidrangeBoostEffect(buf, 1.0f) // Não está funcionando
         return buf
     }

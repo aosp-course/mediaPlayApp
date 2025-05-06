@@ -3,53 +3,93 @@
 #include <vector>
 #include <cmath>
 #include <android/log.h>
+#include "filters.h"
 
 #define LOG_TAG "AudioEffectsManager"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+float history[FILTER_TAPS] = {0};
+
 // Função para reforço de Bass usando filtro passa-baixa (agora com ByteArray)
-std::vector<jbyte> lowPassFilter(const std::vector<jbyte>& input, float strength) {
+std::vector<jbyte> lowPassFilter(const std::vector<jbyte> &input, float strength) {
     std::vector<jbyte> output(input.size());
     float alpha = strength; // Controle de força do filtro (0 < alpha < 1)
 
     float previousFilteredSample = static_cast<float>(input[0]);
     for (size_t i = 0; i < input.size(); ++i) {
-        float filteredSample = alpha * static_cast<float>(input[i]) + (1.0f - alpha) * previousFilteredSample;
-        output[i] = static_cast<jbyte>(filteredSample);
-        previousFilteredSample = filteredSample;
+        //float filteredSample = alpha * static_cast<float>(input[i]) + (1.0f - alpha) * previousFilteredSample;
+        //output[i] = static_cast<jbyte>(filteredSample);
+        //previousFilteredSample = filteredSample;
+        output[i] = input[i];
     }
 
     return output;
 }
 
 // Função para reforço de Midrange usando filtro passa-banda (agora com ByteArray)
-std::vector<jbyte> bandPassFilter(const std::vector<jbyte>& input, float strength, int sampleRate) {
+std::vector<jbyte> bandPassFilter(const std::vector<jbyte> &input, float strength, int sampleRate) {
     std::vector<jbyte> output(input.size());
-    const float lowCutoff = 400.0;
-    const float highCutoff = 2500.0;
+/*
+    for (int n = 0; n < input.size(); n++) {
+        // Shift history buffer
+        for (int i = FILTER_TAPS - 1; i > 0; i--) {
+            history[i] = history[i - 1];
+        }
+        history[0] = (float)input[n];  // Convert to float for filtering
 
-    float rcLow = 1.0f / (2 * M_PI * lowCutoff);
-    float dt = 1.0f / sampleRate;
-    float alphaLow = dt / (rcLow + dt);
+        // Apply FIR filter
+        float acc = 0.0f;
+        for (int i = 0; i < FILTER_TAPS; i++) {
+            acc += filter_coeffs[i] * history[i];
+        }
 
-    float rcHigh = 1.0f / (2 * M_PI * highCutoff);
-    float alphaHigh = rcHigh / (rcHigh + dt);
+        // Clamp and store in output array
+        int32_t y = lroundf(acc);
+        if (y > 127) y = 127;
+        if (y < -128) y = -128;
+        output[n] = (jbyte)y;
+    }
+*/
 
-    float lowPass = 0.0f, highPass = 0.0f;
-    for (size_t i = 0; i < input.size(); ++i) {
-        lowPass += alphaLow * (static_cast<float>(input[i]) - lowPass);
-        highPass += alphaHigh * (lowPass - highPass);
-        output[i] = static_cast<jbyte>(highPass * strength);
+    for (auto i = 0u; i < input.size(); ++i) {
+        double acc = 0.0;
+        acc = input[i] * filter_coeffs[0];
+        for (auto j = 1u; j < FILTER_TAPS; ++j) {
+            acc += input[i + j] * filter_coeffs[j];
+        }
+        if (acc > 127) acc = 127;
+        if (acc < -128) acc = -128;
+        output[i] = (jbyte) acc;
     }
 
+    /*
+        for (auto i = 0u; i < input.size(); ++i) {
+        for (int b = FILTER_TAPS - 1; b > 0; b--) {
+            history[b] = history[b - 1];
+        }
+        history[0] = (double)input[i];  // Convert to float for filtering
+
+        // Apply FIR filter
+        double acc = 0.0f;
+        for (int j = 0; j < FILTER_TAPS; j++) {
+            acc += filter_coeffs[j] * history[j];
+        }
+
+        if (acc > 127) acc = 127;
+        if (acc < -128) acc = -128;
+        output[i] = (jbyte)acc;
+    }
+         */
     return output;
 }
 
 // Método JNI para aplicar BassBoost (agora utilizando ByteArray)
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mediaplayerapp_AudioEqualizer_applyBassBoostEffect(JNIEnv *env, jobject thiz, jbyteArray audioData, jfloat bassStrength) {
+Java_com_example_mediaplayerapp_AudioEqualizer_applyBassBoostEffect(JNIEnv *env, jobject thiz,
+                                                                    jbyteArray audioData,
+                                                                    jfloat bassStrength) {
     jsize length = env->GetArrayLength(audioData);
-    jbyte* audioDataArray = env->GetByteArrayElements(audioData, nullptr);
+    jbyte *audioDataArray = env->GetByteArrayElements(audioData, nullptr);
 
     std::vector<jbyte> input(audioDataArray, audioDataArray + length);
 
@@ -66,9 +106,11 @@ Java_com_example_mediaplayerapp_AudioEqualizer_applyBassBoostEffect(JNIEnv *env,
 
 // Método JNI para aplicar MidrangeBoost (agora utilizando ByteArray)
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_example_mediaplayerapp_AudioEqualizer_applyMidrangeBoostEffect(JNIEnv *env, jobject thiz, jbyteArray audioData, jfloat midrangeStrength) {
+Java_com_example_mediaplayerapp_AudioEqualizer_applyMidrangeBoostEffect(JNIEnv *env, jobject thiz,
+                                                                        jbyteArray audioData,
+                                                                        jfloat midrangeStrength) {
     jsize length = env->GetArrayLength(audioData);
-    jbyte* audioDataArray = env->GetByteArrayElements(audioData, nullptr);
+    jbyte *audioDataArray = env->GetByteArrayElements(audioData, nullptr);
 
     std::vector<jbyte> input(audioDataArray, audioDataArray + length);
     int sampleRate = 44100; // Taxa de amostragem comum
