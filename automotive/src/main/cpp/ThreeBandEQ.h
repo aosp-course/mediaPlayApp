@@ -4,10 +4,10 @@
 #include "BiquadFilters.h"
 #include <vector>
 #include <cstdint>
-#include <algorithm> // For std::transform, std::clamp
-#include <cmath>     // For pow
+#include <algorithm>
+#include <cmath>
 
-// Helper to convert dB to linear gain
+// converte um ganho em DB em um valor linear de ganho
 float dbToLinear(float db) {
     return std::pow(10.0f, db / 20.0f);
 }
@@ -17,31 +17,29 @@ public:
     ThreeBandEQ() = default;
 
     void setup(double sampleRate, double lowMidCutoffHz, double midHighCutoffHz) {
-        m_sampleRate = sampleRate;
-        m_lowMidCutoff = lowMidCutoffHz;
-        m_midHighCutoff = midHighCutoffHz;
+        // a implementacao abaixo do equalizador utiliza 8 filtros BiQuad de resposta ao impulso infinita (IIR) do tipo Butterworth
+        // em cascata (um filtro após o outro). os 8 filtros são utilizados da seguinte forma:
 
-        // For a 2nd Order Linkwitz-Riley, Q is 0.707 for each of the two cascaded 1st order Butterworth
-        // or if using a single biquad per stage, Q is 0.5 for each of the 2nd order stages
-        // For simplicity here, we'll use two biquads for a 4th order LR-like effect (steeper slope)
-        // by cascading two 2nd-order Butterworth filters (Q=0.707).
-        // If you want a true 2nd order LR (12dB/octave), use Q=0.5 and only one filter per path.
-        // Here, Q=0.70707 makes each biquad a 2nd order Butterworth. Cascading two gives a 4th order Linkwitz-Riley.
-        double q = 0.70710678118; // Q for Butterworth (1/sqrt(2))
+        // 1 - um filtro passa baixa de 4a ordem, utilizando 2 filtros passa baixa de 2a ordem em cascata
+        // 2 - um filtro passa alta de 4a ordem, utilizando 2 filtros passa alta de 2a ordem em cascata
+        // 3 - um filtro passa faixa de 4a ordem, utilizando 2 filtros passa baixa e 2 filtros passa alta em cascata
 
-        // Low band path (LPF at lowMidCutoff)
+        // com esses 3 filtros, nós conseguimos processar um sinal de áudio dividindo ele em 3 regiões: a região de
+        // frequências graves (Bass), frequências médias (Midrange) e frequências agudas (Treble)
+        // para cada uma dessas faixas de frequência, conseguimos determinar um ganho positivo ou negativo
+        // para que a equalização aumente ou diminua o volume do áudio para aquela determinada frequência
+
+        double q = 0.70710678118; // fator de qualidade Q para um filtro Butterworth (1/sqrt(2))
+
+        // filtro passa baixa
         lpf1_low.setCoefficients(FilterType::LOWPASS, sampleRate, lowMidCutoffHz, q);
         lpf2_low.setCoefficients(FilterType::LOWPASS, sampleRate, lowMidCutoffHz, q);
 
-        // High band path (HPF at midHighCutoff)
+        // filtro passa alta
         hpf1_high.setCoefficients(FilterType::HIGHPASS, sampleRate, midHighCutoffHz, q);
         hpf2_high.setCoefficients(FilterType::HIGHPASS, sampleRate, midHighCutoffHz, q);
 
-        // For mid band, we need signal components between lowMidCutoff and midHighCutoff
-        // We can take the full signal, subtract the low, and subtract the high.
-        // Or, more directly for LR crossovers:
-        // Mid = LPF(midHighCutoff) - LPF(lowMidCutoff)
-        // which is equivalent to HPF(lowMidCutoff) applied to LPF(midHighCutoff) output.
+        // filtro passa faixa
         lpf1_mid.setCoefficients(FilterType::LOWPASS, sampleRate, midHighCutoffHz, q);
         lpf2_mid.setCoefficients(FilterType::LOWPASS, sampleRate, midHighCutoffHz, q);
 
@@ -49,84 +47,62 @@ public:
         hpf2_mid.setCoefficients(FilterType::HIGHPASS, sampleRate, lowMidCutoffHz, q);
     }
 
-    // Process a block of 16-bit PCM audio samples
-    // Gains are in dB
     void processBlock(std::vector<int16_t>& samples, float gainLowDb, float gainMidDb, float gainHighDb) {
-        if (m_sampleRate == 0) return; // Not initialized
-
         float linGainLow = dbToLinear(gainLowDb);
         float linGainMid = dbToLinear(gainMidDb);
         float linGainHigh = dbToLinear(gainHighDb);
 
+        // cria o vetor de saida
         std::vector<float> floatSamples(samples.size());
 
-        // Convert int16_t to float [-1.0, 1.0]
+        // o bloco de áudio a ser processado está em 16-bit PCM
+
+        // convertendo int16_t para float [-1.0, 1.0]
         std::transform(samples.begin(), samples.end(), floatSamples.begin(),
                        [](int16_t s) { return static_cast<float>(s) / 32768.0f; });
 
         for (size_t i = 0; i < floatSamples.size(); ++i) {
             float inputSample = floatSamples[i];
 
-            // --- Low Band ---
+            // frequências graves do sinal
             float lowSignal = lpf2_low.process(lpf1_low.process(inputSample));
 
-            // --- High Band ---
+            // frequências altas do sinal
             float highSignal = hpf2_high.process(hpf1_high.process(inputSample));
 
-            // --- Mid Band ---
-            // Pass through LPF (cutoff at midHigh) then HPF (cutoff at lowMid)
-            float midSignalPath = hpf2_mid.process(hpf1_mid.process(
+            // frequências médias do sinal: filtra as altas e filtra as baixas, deixando as médias
+            float midSignal = hpf2_mid.process(hpf1_mid.process(
                     lpf2_mid.process(lpf1_mid.process(inputSample))
             ));
-            // An alternative for mid-band in an LR crossover setup:
-            // If using true LR crossovers, mid = original - low - high.
-            // However, since we are directly filtering, the above bandpass approach is more common.
-            // For a simpler crossover:
-            // float midSignal = inputSample - lowSignal - highSignal; // This works if LPF and HPF are perfect complementary.
-            // With the bandpass approach:
-            float midSignal = midSignalPath;
 
-
-            // Apply gains
+            // multiplica as amplitudes dos sinais pelo ganho de cada um deles
             lowSignal *= linGainLow;
             midSignal *= linGainMid;
             highSignal *= linGainHigh;
 
-            // Sum bands
+            // soma os 3 sinais
             float outputSample = lowSignal + midSignal + highSignal;
 
-            // Store back (clipping will happen during conversion to int16_t)
+            // guarda o valor no vetor de saida
             floatSamples[i] = outputSample;
         }
 
-        // Convert float back to int16_t with clipping
+        // converte de float de volta para uint_16t
         std::transform(floatSamples.begin(), floatSamples.end(), samples.begin(),
                        [](float s) {
-                           float clamped = std::max(-1.0f, std::min(1.0f, s)); // Ensure in [-1,1]
-                           return static_cast<int16_t>(clamped * 32767.0f);   // Scale and cast
+                           float clamped = std::max(-1.0f, std::min(1.0f, s)); // garante que os valores nao ultrapassam -1 ou 1
+                           return static_cast<int16_t>(clamped * 32767.0f);   // converte da escola de -1 a 1 para o valor maximo de 16 bits
                        });
     }
 
-    void resetFilters() {
-        lpf1_low.reset(); lpf2_low.reset();
-        hpf1_high.reset(); hpf2_high.reset();
-        lpf1_mid.reset(); lpf2_mid.reset();
-        hpf1_mid.reset(); hpf2_mid.reset();
-    }
-
 private:
-    double m_sampleRate = 0;
-    double m_lowMidCutoff = 0;
-    double m_midHighCutoff = 0;
-
-    // Filters for 4th order Linkwitz-Riley like crossover
-    // Low Band path
+    // banda de frequências baixas
     BiquadFilter lpf1_low, lpf2_low;
-    // High Band path
+    // banda de frequências altas
     BiquadFilter hpf1_high, hpf2_high;
-    // Mid Band path (LPF up to midHigh, then HPF from lowMid)
-    BiquadFilter lpf1_mid, lpf2_mid; // LPF part of mid band (up to midHighCutoff)
-    BiquadFilter hpf1_mid, hpf2_mid; // HPF part of mid band (from lowMidCutoff)
+    // banda de frequências médias
+    BiquadFilter lpf1_mid, lpf2_mid; // filtro passa baixa usado pras frequências médias
+    BiquadFilter hpf1_mid, hpf2_mid; // filtro passa alta usado pras frequ~encias médias
 };
 
 #endif // THREE_BAND_EQ_H
