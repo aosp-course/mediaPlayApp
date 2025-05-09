@@ -90,7 +90,7 @@ class MediaPlayerService : Service() {
             val sampleRate   = 44_100
             val channelCfg   = AudioFormat.CHANNEL_OUT_MONO
             val audioFmt     = AudioFormat.ENCODING_PCM_16BIT
-            val frameSize    = AudioTrack.getMinBufferSize(sampleRate, channelCfg, audioFmt)*64
+            val frameSize    = AudioTrack.getMinBufferSize(sampleRate, channelCfg, audioFmt)*8
             val bytesPerFrame = 16 /* bytes/sample */ * 1 /* channels */
             // how many PCM‐frames per chunk?
             val frameSamples  = frameSize / bytesPerFrame
@@ -116,7 +116,9 @@ class MediaPlayerService : Service() {
             audioTrack?.setPlaybackPositionUpdateListener(
                 object : AudioTrack.OnPlaybackPositionUpdateListener {
                     override fun onPeriodicNotification(track: AudioTrack) {
-                        if (!isPlaying || isPaused) return
+                        if (!isPlaying || isPaused) {
+                            return
+                        }
                         synchronized(inputStream) {
                             val frame = readNextFrame(inputStream, frameSize)
                             if (frame == null) {
