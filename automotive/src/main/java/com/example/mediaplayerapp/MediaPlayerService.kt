@@ -69,6 +69,7 @@ class MediaPlayerService : Service() {
      * Por enquanto, retorna o buffer sem modificações.
      */
     private fun applyAudioEffects(buffer: ByteArray): ByteArray {
+        Log.i(TAG, "Aplicando efeitos de áudio")
         var buf = buffer
         buf = audioEqualizer.applyBassMidTreble(buf, 1.0f, 1.0f, 1.0f)
         return buf
@@ -85,76 +86,80 @@ class MediaPlayerService : Service() {
             isPlaying = true
             isPaused = false
 
-            val sampleRate = 44100
-            val channelConfig = AudioFormat.CHANNEL_OUT_STEREO
-            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-            val frameSize = AudioTrack.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            // 1) configure AudioTrack
+            val sampleRate   = 44_100
+            val channelCfg   = AudioFormat.CHANNEL_OUT_MONO
+            val audioFmt     = AudioFormat.ENCODING_PCM_16BIT
+            val frameSize    = AudioTrack.getMinBufferSize(sampleRate, channelCfg, audioFmt)*64
+            val bytesPerFrame = 16 /* bytes/sample */ * 1 /* channels */
+            // how many PCM‐frames per chunk?
+            val frameSamples  = frameSize / bytesPerFrame
+
             audioTrack = AudioTrack(
                 AudioManager.STREAM_MUSIC,
                 sampleRate,
-                channelConfig,
-                audioFormat,
+                channelCfg,
+                audioFmt,
                 frameSize,
                 AudioTrack.MODE_STREAM
             )
 
-            playThread = Thread {
-                val inputStream: InputStream = resources.openRawResource(resourceId)
-                inputStream.skip(44) // Pular cabeçalho do WAV
+            // 2) open and skip WAV header
+            val inputStream = resources.openRawResource(resourceId).apply { skip(44) }
 
-                var currentFrame: ByteArray? = null
-                var nextFrame: ByteArray? = null
-                val buffer = ByteArray(frameSize)
-                var bytesRead: Int
+            // 3) preload first two frames
+            val firstFrame  = readNextFrame(inputStream, frameSize)
+            val secondFrame = readNextFrame(inputStream, frameSize)
 
-                // Pré-carrega o primeiro frame
-                bytesRead = inputStream.read(buffer, 0, frameSize)
-                if (bytesRead > 0) {
-                    currentFrame = buffer.copyOf(bytesRead)
-                }
-
-                // Pré-carrega o próximo frame
-                if (inputStream.available() > 0) {
-                    bytesRead = inputStream.read(buffer, 0, frameSize)
-                    if (bytesRead > 0) {
-                        nextFrame = buffer.copyOf(bytesRead)
-                    }
-                }
-
-                audioTrack?.play()
-
-                while (isPlaying && currentFrame != null) {
-                    if (isPaused) {
-                        Thread.sleep(100)
-                        continue
-                    }
-                    // Processa e envia o frame atual
-                    val processedFrame = applyAudioEffects(currentFrame)
-
-                    Log.d(TAG, "Enviando frame de tamanho: ${processedFrame.size}")
-                    audioTrack?.write(processedFrame, 0, processedFrame.size)
-
-                    // TODO: Wait until current frame is over
-
-                    currentFrame = nextFrame
-                    nextFrame = null
-
-                    // Lê um novo frame para atualizar o próximo
-                    if (isPlaying && inputStream.available() > 0) {
-                        bytesRead = inputStream.read(buffer, 0, frameSize)
-                        if (bytesRead > 0) {
-                            nextFrame = buffer.copyOf(bytesRead)
+            // 4) install listener so we get a callback every `frameSamples` frames
+            audioTrack?.setPositionNotificationPeriod(frameSamples)
+            audioTrack?.setPlaybackPositionUpdateListener(
+                object : AudioTrack.OnPlaybackPositionUpdateListener {
+                    override fun onPeriodicNotification(track: AudioTrack) {
+                        if (!isPlaying || isPaused) return
+                        synchronized(inputStream) {
+                            val frame = readNextFrame(inputStream, frameSize)
+                            if (frame == null) {
+                                // no more data → stop cleanly
+                                track.setPlaybackPositionUpdateListener(null)
+                                track.stop()
+                                isPlaying = false
+                                inputStream.close()
+                                return
+                            }
+                            // process & write next chunk
+                            val processed = applyAudioEffects(frame)
+                            track.write(processed, 0, processed.size)
                         }
                     }
+                    override fun onMarkerReached(track: AudioTrack) { /* not used */ }
                 }
-                inputStream.close()
+            )
+
+            // 5) write the two preloaded frames
+            firstFrame?.let {
+                val p = applyAudioEffects(it)
+                audioTrack?.write(p, 0, p.size)
             }
-            playThread?.start()
+            secondFrame?.let {
+                val p = applyAudioEffects(it)
+                audioTrack?.write(p, 0, p.size)
+            }
+
+            // 6) kick off playback
+            audioTrack?.play()
             sendBroadcastResponseToApp("com.example.ACTION_PLAY")
             notificationManager.showNotification("Música tocando")
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao iniciar reprodução via AudioTrack", e)
         }
+    }
+
+    /** Reads up to `frameSize` bytes from the stream, skipping if EOF. */
+    private fun readNextFrame(inputStream: InputStream, frameSize: Int): ByteArray? {
+        val buffer = ByteArray(frameSize)
+        val bytesRead = inputStream.read(buffer, 0, frameSize)
+        return if (bytesRead > 0) buffer.copyOf(bytesRead) else null
     }
 
     /**
