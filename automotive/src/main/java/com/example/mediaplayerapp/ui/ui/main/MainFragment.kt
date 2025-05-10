@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import androidx.navigation.fragment.findNavController
@@ -13,6 +14,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.example.mediaplayerapp.R
 import com.example.mediaplayerapp.viewmodel.MediaPlayerViewModel
@@ -23,7 +25,7 @@ class MainFragment : Fragment() {
         fun newInstance() = MainFragment()
     }
 
-    private lateinit var viewModel: MediaPlayerViewModel
+    private val viewModel: MediaPlayerViewModel by activityViewModels<MediaPlayerViewModel>()
     lateinit var playPauseButton: ImageView
 
     private val receiver = object : BroadcastReceiver() {
@@ -52,10 +54,6 @@ class MainFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(
-            this,
-            ViewModelProvider.NewInstanceFactory()
-        )[MediaPlayerViewModel::class.java]
     }
 
     override fun onCreateView(
@@ -74,6 +72,8 @@ class MainFragment : Fragment() {
         val settingsButton: ImageView = view.findViewById(R.id.settings_button)
 
         playPauseButton.setOnClickListener {
+            Log.i("MainFragment", "playPauseButton clicked")
+            Log.i("MainFragment", "viewModel.isPaused: " + viewModel.isPaused.toString())
             if (viewModel.isPaused) {
                 viewModel.playMusic(requireContext())
             } else {
@@ -133,5 +133,10 @@ class MainFragment : Fragment() {
         if (albumData != null) {
             albumImageView.setImageBitmap(albumData)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.i("MainFragment", "onResume() called isPaused" + viewModel.isPaused)
     }
 }

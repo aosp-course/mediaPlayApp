@@ -9,6 +9,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.mediaplayerapp.MediaPlayerService
 import com.example.mediaplayerapp.R
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.audio.exceptions.CannotReadException
+import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.TagException
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
 
 /**
  * @class MainViewModel
@@ -50,10 +59,11 @@ class MediaPlayerViewModel : ViewModel() {
         val retriever = MediaMetadataRetriever()
         val afd = context.resources.openRawResourceFd(musicList[currentMusicIndex])
         retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Unknown music"
+        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Unknown artist"
         return "$artist - $title"
     }
+
 
     /**
      * @brief Obtém a capa do álbum da música atual.
@@ -82,7 +92,7 @@ class MediaPlayerViewModel : ViewModel() {
      */
     private fun playMusic(context: Context, resourceId: Int) {
         var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PLAY"
+            action = MediaPlayerService.ACTION_PLAY
             putExtra("resourceId", resourceId)
         }
         context.startService(serviceIntent)
@@ -106,7 +116,7 @@ class MediaPlayerViewModel : ViewModel() {
     fun pauseMusic(context: Context) {
         Log.i(TAG, "pauseMusic")
         var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PAUSE"
+            action = MediaPlayerService.ACTION_PAUSE
         }
         context.startService(serviceIntent)
         isPaused = true
@@ -119,7 +129,7 @@ class MediaPlayerViewModel : ViewModel() {
     fun stopMusic(context: Context) {
         Log.i(TAG, "stopMusic")
         val serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_STOP"
+            action = MediaPlayerService.ACTION_STOP
         }
         context.startService(serviceIntent)
         isPaused = true
