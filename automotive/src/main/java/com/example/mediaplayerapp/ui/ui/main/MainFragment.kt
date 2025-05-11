@@ -32,17 +32,17 @@ class MainFragment : Fragment() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val status = intent?.getStringExtra("status")
             status?.let {
-                updateUIOnMediaPlayerStatusChanged(it)
+                updateUIOnMediaPlayerStatusChanged(it != "com.example.ACTION_PLAY")
             }
         }
     }
 
-    private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
+    private fun updateUIOnMediaPlayerStatusChanged(isMediaPaused: Boolean) {
         var drawableId: Int
-        if (mediaPlayerStatus == "com.example.ACTION_PLAY") {
-            drawableId = R.drawable.pause_circle
-        } else {
+        if (isMediaPaused) {
             drawableId = R.drawable.play_circle
+        } else {
+            drawableId = R.drawable.pause_circle
         }
         playPauseButton.setImageDrawable(
             ContextCompat.getDrawable(
@@ -74,11 +74,14 @@ class MainFragment : Fragment() {
         playPauseButton.setOnClickListener {
             Log.i("MainFragment", "playPauseButton clicked")
             Log.i("MainFragment", "viewModel.isPaused: " + viewModel.isPaused.toString())
-            if (viewModel.isPaused) {
+            if (viewModel.isPaused.value == true) {
                 viewModel.playMusic(requireContext())
             } else {
                 viewModel.pauseMusic(requireContext())
             }
+        }
+        viewModel.isPaused.observe(viewLifecycleOwner){
+            isPaused -> updateUIOnMediaPlayerStatusChanged(isPaused)
         }
 
         stopButton.setOnClickListener {
