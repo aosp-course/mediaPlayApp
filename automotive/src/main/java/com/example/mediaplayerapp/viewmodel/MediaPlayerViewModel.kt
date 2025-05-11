@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.mediaplayerapp.MediaPlayerService
 import com.example.mediaplayerapp.R
@@ -33,7 +35,8 @@ class MediaPlayerViewModel : ViewModel() {
     val TAG = "MediaPlayerViewModel"
 
     /// Indica se a música está pausada.
-    var isPaused = true
+    private val _isPaused = MutableLiveData<Boolean>(true)
+    val isPaused: LiveData<Boolean> = _isPaused
 
     /// Indica se a música atual está marcada como favorita.
     var isFavorited = false
@@ -96,7 +99,7 @@ class MediaPlayerViewModel : ViewModel() {
             putExtra("resourceId", resourceId)
         }
         context.startService(serviceIntent)
-        isPaused = false
+        _isPaused.value = false
     }
 
     /**
@@ -106,7 +109,7 @@ class MediaPlayerViewModel : ViewModel() {
     fun playMusic(context: Context) {
         Log.i(TAG, "playMusic")
         playMusic(context, musicList[currentMusicIndex])
-        isPaused = false
+        _isPaused.value = false
     }
 
     /**
@@ -119,7 +122,7 @@ class MediaPlayerViewModel : ViewModel() {
             action = MediaPlayerService.ACTION_PAUSE
         }
         context.startService(serviceIntent)
-        isPaused = true
+        _isPaused.value = true
     }
 
     /**
@@ -132,7 +135,7 @@ class MediaPlayerViewModel : ViewModel() {
             action = MediaPlayerService.ACTION_STOP
         }
         context.startService(serviceIntent)
-        isPaused = true
+        _isPaused.value = true
     }
 
     /**
