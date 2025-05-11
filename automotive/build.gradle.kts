@@ -1,4 +1,8 @@
+import com.android.build.gradle.internal.cxx.gradle.generator.externalNativeBuildIsActive
+
 plugins {
+    kotlin("plugin.serialization") version "2.0.21"
+
     id("com.android.application") version "8.2.0"
     id("org.jetbrains.kotlin.android") version "1.9.0"
 }
@@ -15,6 +19,20 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Transmite argumentos para o CMake, como definições de macros:
+        externalNativeBuild {
+            cmake {
+                cppFlags.add("-std=c++11")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            // Define o caminho para o script CMakeLists.txt
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     buildTypes {
@@ -33,7 +51,15 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
+
+
 
 dependencies {
     implementation("androidx.media:media:1.7.0")
@@ -46,4 +72,20 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.mockito:mockito-core:5.10.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.test:core-ktx:1.5.0")
+
+
+    // Navigation
+    val nav_version = "2.8.9"
+    // Views/Fragments integration
+    implementation("androidx.navigation:navigation-fragment-ktx:$nav_version")
+    implementation("androidx.navigation:navigation-ui-ktx:$nav_version")
+    implementation("androidx.navigation:navigation-dynamic-features-fragment:$nav_version")
+    androidTestImplementation("androidx.navigation:navigation-testing:$nav_version")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("org.jaudiotagger:jaudiotagger:2.0.1")
 }
