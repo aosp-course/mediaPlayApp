@@ -4,18 +4,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.Image
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.OnClickListener
+import androidx.navigation.fragment.findNavController
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.example.mediaplayerapp.R
+import com.example.mediaplayerapp.viewmodel.MediaPlayerViewModel
 
 class MainFragment : Fragment() {
 
@@ -23,24 +25,24 @@ class MainFragment : Fragment() {
         fun newInstance() = MainFragment()
     }
 
-    private lateinit var viewModel: MainViewModel
+    private val viewModel: MediaPlayerViewModel by activityViewModels<MediaPlayerViewModel>()
     lateinit var playPauseButton: ImageView
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val status = intent?.getStringExtra("status")
             status?.let {
-                updateUIOnMediaPlayerStatusChanged(it)
+                updateUIOnMediaPlayerStatusChanged(it != "com.example.ACTION_PLAY")
             }
         }
     }
 
-    private fun updateUIOnMediaPlayerStatusChanged(mediaPlayerStatus: String) {
+    private fun updateUIOnMediaPlayerStatusChanged(isMediaPaused: Boolean) {
         var drawableId: Int
-        if (mediaPlayerStatus == "com.example.ACTION_PLAY") {
-            drawableId = R.drawable.pause_circle
-        } else {
+        if (isMediaPaused) {
             drawableId = R.drawable.play_circle
+        } else {
+            drawableId = R.drawable.pause_circle
         }
         playPauseButton.setImageDrawable(
             ContextCompat.getDrawable(
@@ -52,10 +54,6 @@ class MainFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(
-            this,
-            ViewModelProvider.NewInstanceFactory()
-        )[MainViewModel::class.java]
     }
 
     override fun onCreateView(
@@ -71,13 +69,19 @@ class MainFragment : Fragment() {
         val stopButton: ImageView = view.findViewById(R.id.stop_button)
         val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
         val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
+        val settingsButton: ImageView = view.findViewById(R.id.settings_button)
 
         playPauseButton.setOnClickListener {
-            if (viewModel.isPaused) {
+            Log.i("MainFragment", "playPauseButton clicked")
+            Log.i("MainFragment", "viewModel.isPaused: " + viewModel.isPaused.toString())
+            if (viewModel.isPaused.value == true) {
                 viewModel.playMusic(requireContext())
             } else {
                 viewModel.pauseMusic(requireContext())
             }
+        }
+        viewModel.isPaused.observe(viewLifecycleOwner){
+            isPaused -> updateUIOnMediaPlayerStatusChanged(isPaused)
         }
 
         stopButton.setOnClickListener {
@@ -105,6 +109,10 @@ class MainFragment : Fragment() {
             viewModel.setFavoriteMusic()
         }
 
+        settingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_mainFragment_to_equalizerFragment)
+        }
+
         updateMusicMetadata(view)
     }
 
@@ -128,5 +136,10 @@ class MainFragment : Fragment() {
         if (albumData != null) {
             albumImageView.setImageBitmap(albumData)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.i("MainFragment", "onResume() called isPaused" + viewModel.isPaused)
     }
 }

@@ -1,16 +1,25 @@
-package com.example.mediaplayerapp.ui.ui.main
+package com.example.mediaplayerapp.viewmodel
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import android.provider.MediaStore.Audio.Media
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.mediaplayerapp.MediaPlayerService
 import com.example.mediaplayerapp.R
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.audio.exceptions.CannotReadException
+import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.TagException
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
 
 /**
  * @class MainViewModel
@@ -20,16 +29,19 @@ import com.example.mediaplayerapp.R
  * como tocar, pausar, parar, e pular faixas, além de manipular favoritos e
  * recuperar metadados da música.
  */
-class MainViewModel : ViewModel() {
+class MediaPlayerViewModel : ViewModel() {
 
     /// Tag utilizada para logs.
     val TAG = "MediaPlayerViewModel"
 
     /// Indica se a música está pausada.
-    var isPaused = true
+    private val _isPaused = MutableLiveData<Boolean>(true)
+    val isPaused: LiveData<Boolean> = _isPaused
 
     /// Indica se a música atual está marcada como favorita.
     var isFavorited = false
+
+    lateinit var retriever: MediaMetadataRetriever
 
     /// Lista de IDs dos recursos de áudio.
     private val musicList = listOf(
@@ -43,19 +55,23 @@ class MainViewModel : ViewModel() {
     /// Índice da música atualmente em reprodução.
     private var currentMusicIndex = 0
 
+    init {
+        retriever = MediaMetadataRetriever()
+    }
+
     /**
      * @brief Obtém o nome da música atual.
      * @param context Contexto utilizado para acessar recursos.
      * @return Nome e artista da música atual.
      */
     fun getMusicName(context: Context): String {
-        val retriever = MediaMetadataRetriever()
         val afd = context.resources.openRawResourceFd(musicList[currentMusicIndex])
         retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Unknown music"
+        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "Unknown artist"
         return "$artist - $title"
     }
+
 
     /**
      * @brief Obtém a capa do álbum da música atual.
@@ -84,11 +100,11 @@ class MainViewModel : ViewModel() {
      */
     private fun playMusic(context: Context, resourceId: Int) {
         var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PLAY"
+            action = MediaPlayerService.ACTION_PLAY
             putExtra("resourceId", resourceId)
         }
         context.startService(serviceIntent)
-        isPaused = false
+        _isPaused.value = false
     }
 
     /**
@@ -98,7 +114,7 @@ class MainViewModel : ViewModel() {
     fun playMusic(context: Context) {
         Log.i(TAG, "playMusic")
         playMusic(context, musicList[currentMusicIndex])
-        isPaused = false
+        _isPaused.value = false
     }
 
     /**
@@ -108,10 +124,10 @@ class MainViewModel : ViewModel() {
     fun pauseMusic(context: Context) {
         Log.i(TAG, "pauseMusic")
         var serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_PAUSE"
+            action = MediaPlayerService.ACTION_PAUSE
         }
         context.startService(serviceIntent)
-        isPaused = true
+        _isPaused.value = true
     }
 
     /**
@@ -121,10 +137,10 @@ class MainViewModel : ViewModel() {
     fun stopMusic(context: Context) {
         Log.i(TAG, "stopMusic")
         val serviceIntent = Intent(context, MediaPlayerService::class.java).apply {
-            action = "com.example.ACTION_STOP"
+            action = MediaPlayerService.ACTION_STOP
         }
         context.startService(serviceIntent)
-        isPaused = true
+        _isPaused.value = true
     }
 
     /**

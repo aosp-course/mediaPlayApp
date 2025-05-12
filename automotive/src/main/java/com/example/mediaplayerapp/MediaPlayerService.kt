@@ -4,188 +4,147 @@ import android.app.Service
 import android.content.Intent
 import android.media.AudioManager
 import android.media.AudioManager.OnAudioFocusChangeListener
-import android.media.MediaPlayer
-import android.net.Uri
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 
-/**
- * @class MediaPlayerService
- * @brief Serviço responsável por gerenciar a reprodução de áudio.
- *
- * O MediaPlayerService controla as operações de play, pause e stop
- * de uma música, gerencia o foco de áudio e envia notificações e
- * broadcasts sobre o status do player.
- */
-class MediaPlayerService : Service() {
+open class MediaPlayerService : Service() {
 
-    /// Tag utilizada para logs.
     val TAG: String = "MediaPlayerService"
 
-    /// Instância do MediaPlayer para controlar a reprodução de áudio.
-    private var mediaPlayer: MediaPlayer? = null
-
-    /// Gerenciador de áudio para solicitar foco de áudio.
-    private var audioManager: AudioManager? = null
-
-    /// Sessão de mídia utilizada para integração com controle de mídia.
-    private var mediaSession: MediaSessionCompat? = null
-
-    /// Indica se o serviço foi parado.
-    private var isServiceStopped = true
-
-    /// ID do canal de notificações.
+    protected var audioManager: AudioManager? = null
+    protected var mediaSession: MediaSessionCompat? = null
+    protected var isServiceStopped = true
     private val CHANNEL_ID: String = "MediaPlayerChannel"
-
-    /// ID da notificação.
     private val notificationId = 1
+    protected lateinit var notificationManager: MediaPlayerNotificationManager
+    protected lateinit var audioEngine: AudioPlaybackEngine
 
-    /// Gerenciador de notificações para enviar atualizações ao usuário.
-    private lateinit var notificationManager: MediaPlayerNotificationManager
+    companion object {
+        const val ACTION_PLAY = "com.example.ACTION_PLAY"
+        const val ACTION_PAUSE = "com.example.ACTION_PAUSE"
+        const val ACTION_STOP = "com.example.ACTION_STOP"
+        const val ACTION_UPDATE_EQ = "com.example.ACTION_UPDATE_EQ"
+        const val EXTRA_BASS_DB = "com.example.EXTRA_BASS_DB"
+        const val EXTRA_MID_DB = "com.example.EXTRA_MID_DB"
+        const val EXTRA_TREBLE_DB = "com.example.EXTRA_TREBLE_DB"
+    }
 
-    /**
-     * Listener para mudanças de foco de áudio.
-     * Pausa a música caso o foco seja perdido.
-     */
-    private val mAudioFocusListener =
-        OnAudioFocusChangeListener { focus ->
-            when (focus) {
-                AudioManager.AUDIOFOCUS_LOSS,
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> pauseAudio()
-            }
-        }
-
-    /**
-     * @brief Inicia a reprodução de áudio.
-     * @param resourceId ID do recurso de áudio a ser reproduzido.
-     */
-    private fun playAudio(resourceId: Int) {
-        Log.i(TAG, "Música tocando")
-        try {
-            mediaPlayer!!.reset()
-            mediaPlayer!!.setDataSource(this, Uri.parse("android.resource://" + packageName + "/" + resourceId))
-            mediaPlayer!!.prepare()
-            mediaPlayer!!.start()
-            sendBroadcastResponseToApp("com.example.ACTION_PLAY")
-            notificationManager.showNotification("Música tocando")
-        } catch (e: Exception) {
-            Log.e(TAG, "Ocorreu um erro ao tentar dar play na música")
-            e.printStackTrace()
+    protected val mAudioFocusListener = OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS ->
+                audioEngine.stop()
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->
+                audioEngine.pause()
+            AudioManager.AUDIOFOCUS_GAIN ->
+                audioEngine.resume()
         }
     }
 
-    /**
-     * @brief Pausa a reprodução de áudio.
-     */
-    private fun pauseAudio() {
-        if(mediaPlayer != null && mediaPlayer!!.isPlaying()) {
-            Log.i(TAG, "Música pausada")
-            mediaPlayer!!.pause()
-            sendBroadcastResponseToApp("com.example.ACTION_PAUSE")
-            notificationManager.showNotification("Música pausada")
-        }
+    override fun onCreate() {
+        super.onCreate()
+        Log.i(TAG, "MediaPlayerService onCreate chamado.")
+        initServiceIfRequired()
     }
 
-    /**
-     * @brief Para a reprodução de áudio e finaliza o serviço.
-     */
-    private fun stopAudio() {
-        Log.i(TAG, "Música parada")
-        notificationManager.showNotification("Música parada")
-        mediaPlayer!!.stop()
-        stopForeground(true)
-        sendBroadcastResponseToApp("com.example.ACTION_STOP")
-        stopSelf()
-        isServiceStopped = true
-    }
-
-    /**
-     * @brief Envia um broadcast com o status atual do player.
-     * @param message Mensagem indicando o status do player.
-     */
-    private fun sendBroadcastResponseToApp(message: String) {
-        val intent = Intent("com.example.MEDIA_PLAYER_STATUS")
-        intent.putExtra("status", message)
-        sendBroadcast(intent)
-    }
-
-    override fun onBind(p0: Intent?): IBinder? {
-        return null
-    }
-
-    /**
-     * @brief Manipula comandos de início do serviço.
-     * @param intent Intent que contém a ação a ser executada.
-     * @param flags Flags adicionais.
-     * @param startId Identificador do start request.
-     * @return Código de retorno indicando como o sistema deve continuar o serviço.
-     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            initServiceIfRequired()
-            val action = intent.action
-            if (action != null) when (action) {
-                "com.example.ACTION_PLAY" -> {
-                    val resourceId = intent.getIntExtra("resourceId", 0)
-                    requestAudioFocus {
-                        if (resourceId != 0) {
-                            playAudio(resourceId)
-                        }
-                    }
-                }
-                "com.example.ACTION_PAUSE" -> pauseAudio()
-                "com.example.ACTION_STOP" -> stopAudio()
-                else -> {
-                    Log.e(TAG, "Ação não encontrada!")
-                }
-            }
+        if (intent == null) {
+            Log.w(TAG, "onStartCommand recebido com Intent nulo. Ignorando.")
+            return START_NOT_STICKY
         }
 
-        return START_STICKY
+        initServiceIfRequired()
+        val action = intent.action
+        Log.i(TAG, "onStartCommand recebido com ação: $action")
+
+        when (action) {
+            ACTION_PLAY -> {
+                val resourceId = intent.getIntExtra("resourceId", 0)
+                if (resourceId != 0) {
+                    requestAudioFocus {
+                        Log.i(TAG, "Foco de áudio concedido. Iniciando playAudio para resourceId: $resourceId")
+                        audioEngine.play(resourceId)
+                        sendBroadcastResponseToApp(ACTION_PLAY)
+                        notificationManager.showNotification("Música tocando")
+                    }
+                } else {
+                    Log.w(TAG, "ACTION_PLAY recebido sem resourceId válido.")
+                }
+            }
+            ACTION_PAUSE -> {
+                Log.i(TAG, "Ação PAUSE recebida.")
+                audioEngine.pause()
+                sendBroadcastResponseToApp(ACTION_PAUSE)
+                notificationManager.showNotification("Música pausada")
+            }
+            ACTION_STOP -> {
+                audioEngine.stop()
+                sendBroadcastResponseToApp(ACTION_STOP)
+                notificationManager.showNotification("Música parada")
+                stopForeground(true)
+                stopSelf()
+                isServiceStopped = true
+            }
+            ACTION_UPDATE_EQ -> {
+                audioEngine.setBass(intent.getFloatExtra(EXTRA_BASS_DB, 0.0f))
+                audioEngine.setMid(intent.getFloatExtra(EXTRA_MID_DB, 0.0f))
+                audioEngine.setTreble(intent.getFloatExtra(EXTRA_TREBLE_DB, 0.0f))
+                Log.i(TAG, "EQ atualizado via Intent: Bass=${intent.getFloatExtra(EXTRA_BASS_DB, 0.0f)}dB, " +
+                      "Mid=${intent.getFloatExtra(EXTRA_MID_DB, 0.0f)}dB, " +
+                      "Treble=${intent.getFloatExtra(EXTRA_TREBLE_DB, 0.0f)}dB")
+            }
+            else -> Log.e(TAG, "Ação desconhecida ou nula recebida: $action")
+        }
+        return START_NOT_STICKY
     }
 
-    /**
-     * @brief Solicita foco de áudio.
-     * @param onSuccess Runnable a ser executado caso o foco seja concedido.
-     * @return Verdadeiro se o foco foi concedido, falso caso contrário.
-     */
-    private fun requestAudioFocus(onSuccess: Runnable): Boolean {
+    protected open fun requestAudioFocus(onSuccess: Runnable): Boolean {
+        if (audioManager == null) {
+            Log.e(TAG, "AudioManager não inicializado ao tentar solicitar foco.")
+            return false
+        }
         val result: Int = audioManager!!.requestAudioFocus(
-            mAudioFocusListener, AudioManager.STREAM_MUSIC,
+            mAudioFocusListener,
+            AudioManager.STREAM_MUSIC,
             AudioManager.AUDIOFOCUS_GAIN
         )
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             onSuccess.run()
             return true
         }
-        Log.e(TAG, "Falha ao tentar requisitar foco de áudio")
+        Log.e(TAG, "Falha ao requisitar foco de áudio. Resultado: $result")
         return false
     }
 
-    /**
-     * @brief Inicializa o serviço se necessário.
-     */
-    private fun initServiceIfRequired() {
-        if(isServiceStopped) {
-            mediaPlayer = MediaPlayer()
+    protected open fun initServiceIfRequired() {
+        if (isServiceStopped) {
             audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
-            mediaSession = MediaSessionCompat(this, "MediaPlayerService")
+            mediaSession = MediaSessionCompat(this, "MediaPlayerServiceTag")
             notificationManager = MediaPlayerNotificationManager(this, CHANNEL_ID)
+            audioEngine = AudioPlaybackEngine(this)
             isServiceStopped = false
+            Log.i(TAG, "Serviço inicializado (AudioManager, MediaSession, NotificationManager, AudioEngine).")
         }
     }
 
-    override fun onCreate() {
-        super.onCreate()
-        initServiceIfRequired()
+    protected open fun sendBroadcastResponseToApp(message: String) {
+        val intent = Intent("com.example.MEDIA_PLAYER_STATUS")
+        intent.putExtra("status", message)
+        sendBroadcast(intent)
+        Log.d(TAG, "Broadcast enviado: $message")
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayer!!.release()
-        mediaPlayer = null
-        mediaSession!!.release()
+        Log.i(TAG, "MediaPlayerService onDestroy chamado. Liberando recursos...")
+        audioEngine.stop()
+        audioManager?.abandonAudioFocus(mAudioFocusListener)
+        mediaSession?.release()
+        mediaSession = null
+        audioManager = null
+        Log.i(TAG, "Recursos do serviço (foco, MediaSession) liberados.")
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 }

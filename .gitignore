@@ -1,0 +1,11 @@
+
+
+.idea
+automotive/.cxx
+automotive/build/
+automotive/.gradle
+/gradle/wrapper/gradle-wrapper.jar
+/gradle/wrapper/gradle-wrapper.properties
+/gradlew
+/gradlew.bat
+/local.properties
