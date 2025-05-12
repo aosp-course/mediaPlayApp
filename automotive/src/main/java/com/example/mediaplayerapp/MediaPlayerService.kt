@@ -8,17 +8,17 @@ import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 
-class MediaPlayerService : Service() {
+open class MediaPlayerService : Service() {
 
     val TAG: String = "MediaPlayerService"
 
-    private var audioManager: AudioManager? = null
-    private var mediaSession: MediaSessionCompat? = null
-    private var isServiceStopped = true
+    protected var audioManager: AudioManager? = null
+    protected var mediaSession: MediaSessionCompat? = null
+    protected var isServiceStopped = true
     private val CHANNEL_ID: String = "MediaPlayerChannel"
     private val notificationId = 1
-    private lateinit var notificationManager: MediaPlayerNotificationManager
-    private lateinit var audioEngine: AudioPlaybackEngine
+    protected lateinit var notificationManager: MediaPlayerNotificationManager
+    protected lateinit var audioEngine: AudioPlaybackEngine
 
     companion object {
         const val ACTION_PLAY = "com.example.ACTION_PLAY"
@@ -30,7 +30,7 @@ class MediaPlayerService : Service() {
         const val EXTRA_TREBLE_DB = "com.example.EXTRA_TREBLE_DB"
     }
 
-    private val mAudioFocusListener = OnAudioFocusChangeListener { focusChange ->
+    protected val mAudioFocusListener = OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS ->
                 audioEngine.stop()
@@ -99,7 +99,7 @@ class MediaPlayerService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun requestAudioFocus(onSuccess: Runnable): Boolean {
+    protected open fun requestAudioFocus(onSuccess: Runnable): Boolean {
         if (audioManager == null) {
             Log.e(TAG, "AudioManager não inicializado ao tentar solicitar foco.")
             return false
@@ -117,7 +117,7 @@ class MediaPlayerService : Service() {
         return false
     }
 
-    private fun initServiceIfRequired() {
+    protected open fun initServiceIfRequired() {
         if (isServiceStopped) {
             audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
             mediaSession = MediaSessionCompat(this, "MediaPlayerServiceTag")
@@ -128,7 +128,7 @@ class MediaPlayerService : Service() {
         }
     }
 
-    private fun sendBroadcastResponseToApp(message: String) {
+    protected open fun sendBroadcastResponseToApp(message: String) {
         val intent = Intent("com.example.MEDIA_PLAYER_STATUS")
         intent.putExtra("status", message)
         sendBroadcast(intent)

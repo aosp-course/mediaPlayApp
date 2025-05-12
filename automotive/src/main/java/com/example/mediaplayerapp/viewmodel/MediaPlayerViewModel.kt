@@ -41,6 +41,8 @@ class MediaPlayerViewModel : ViewModel() {
     /// Indica se a música atual está marcada como favorita.
     var isFavorited = false
 
+    lateinit var retriever: MediaMetadataRetriever
+
     /// Lista de IDs dos recursos de áudio.
     private val musicList = listOf(
         R.raw.circusoffreaks,
@@ -53,13 +55,16 @@ class MediaPlayerViewModel : ViewModel() {
     /// Índice da música atualmente em reprodução.
     private var currentMusicIndex = 0
 
+    init {
+        retriever = MediaMetadataRetriever()
+    }
+
     /**
      * @brief Obtém o nome da música atual.
      * @param context Contexto utilizado para acessar recursos.
      * @return Nome e artista da música atual.
      */
     fun getMusicName(context: Context): String {
-        val retriever = MediaMetadataRetriever()
         val afd = context.resources.openRawResourceFd(musicList[currentMusicIndex])
         retriever.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
         val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Unknown music"
