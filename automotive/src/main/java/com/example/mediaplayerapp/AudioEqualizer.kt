@@ -23,6 +23,6 @@ class AudioEqualizer {
         bassStrength: Float,
         midrangeStrength: Float,
         trebleStrength: Float,
-        sampleRate: Int // <<< NOVO PARÂMETRO
+        sampleRate: Int
     ): ByteArray // A função JNI deve retornar jbyteArray
 }
