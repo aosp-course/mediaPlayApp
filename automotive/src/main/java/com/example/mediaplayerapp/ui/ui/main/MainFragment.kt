@@ -70,6 +70,7 @@ class MainFragment : Fragment() {
         val skipNextButton: ImageView = view.findViewById(R.id.skip_next_button)
         val skipBackButton: ImageView = view.findViewById(R.id.skip_back_button)
         val settingsButton: ImageView = view.findViewById(R.id.settings_button)
+        val carButton: ImageView = view.findViewById(R.id.car_button)
 
         playPauseButton.setOnClickListener {
             Log.i("MainFragment", "playPauseButton clicked")
@@ -111,6 +112,10 @@ class MainFragment : Fragment() {
 
         settingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_mainFragment_to_equalizerFragment)
+        }
+
+        carButton.setOnClickListener {
+            findNavController().navigate(R.id.action_mainFragment_to_carFragment)
         }
 
         updateMusicMetadata(view)
