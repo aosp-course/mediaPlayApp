@@ -11,6 +11,9 @@
         <action
             android:id="@+id/action_mainFragment_to_equalizerFragment"
             app:destination="@id/equalizerFragment" />
+        <action
+            android:id="@+id/action_mainFragment_to_carFragment"
+            app:destination="@id/carFragment" />
     </fragment>
     <fragment
         android:id="@+id/equalizerFragment"
@@ -19,5 +22,13 @@
         <action
         android:id="@+id/action_equalizerFragment_to_mainFragment"
         app:destination="@id/mainFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/carFragment"
+        android:name="com.example.mediaplayerapp.ui.car.CarFragment"
+        android:label="CarFragment">
+        <action
+            android:id="@+id/action_carFragment_to_mainFragment"
+            app:destination="@id/mainFragment" />
     </fragment>
 </navigation>

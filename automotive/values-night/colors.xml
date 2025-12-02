@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cores originais do seu app (usadas para Dark Mode) -->
+    <color name="backgroundPrimary">#000000</color>
+    <color name="backgroundSecondary">#163E64</color>
+    <color name="progressColor">#2777BF</color>
+    <color name="white">#ffffff</color>
+    <color name="gold">#FFD700</color>
+    <color name="seekBarBackground">#808080</color>
+
+    <!-- Cores semânticas adicionais para texto/ícones para Dark Mode -->
+    <color name="colorOnBackground">#FFFFFF</color> <!-- Texto/ícones sobre backgroundPrimary (branco) -->
+    <color name="colorOnSurface">#FFFFFF</color> <!-- Texto/ícones sobre backgroundSecondary (branco) -->
+    <color name="colorOnPrimary">#FFFFFF</color> <!-- Texto/ícones sobre progressColor (branco) -->
+    <color name="colorOnSecondary">#000000</color> <!-- Texto/ícones sobre gold (preto) -->
+
+    <!-- Cores auxiliares que podem ser úteis -->
+    <color name="black">#000000</color>
+</resources>

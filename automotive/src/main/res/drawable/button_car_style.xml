@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?android:attr/colorControlHighlight"> <!-- Cor do efeito de "onda" ao tocar -->
+
+    <item android:id="@android:id/mask">
+        <!-- Máscara para o efeito de "onda" (ripple) -->
+        <shape android:shape="rectangle">
+            <corners android:radius="8dp" /> <!-- Cantos arredondados para a máscara -->
+            <solid android:color="@android:color/darker_gray" />
+        </shape>
+    </item>
+
+    <item>
+        <selector>
+            <!-- Estado pressionado do botão -->
+            <item android:state_pressed="true">
+                <shape android:shape="rectangle">
+                    <corners android:radius="8dp" />
+                    <gradient
+                        android:startColor="#4A4A4A"
+                        android:endColor="#2C2C2C"
+                        android:angle="270" /> <!-- Gradiente mais escuro quando pressionado -->
+                    <stroke
+                        android:width="2dp"
+                        android:color="#606060" /> <!-- Borda um pouco mais escura -->
+                </shape>
+            </item>
+
+            <!-- Estado padrão do botão -->
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="8dp" /> <!-- Cantos arredondados -->
+                    <gradient
+                        android:startColor="#6A6A6A"
+                        android:endColor="#4A4A4A"
+                        android:angle="270" /> <!-- Gradiente metálico de cinza escuro para claro -->
+                    <stroke
+                        android:width="2dp"
+                        android:color="#808080" /> <!-- Borda para dar profundidade -->
+                    <padding
+                        android:left="16dp"
+                        android:top="8dp"
+                        android:right="16dp"
+                        android:bottom="8dp" /> <!-- Preenchimento interno para o conteúdo do botão -->
+                </shape>
+            </item>
+        </selector>
+    </item>
+</ripple>
